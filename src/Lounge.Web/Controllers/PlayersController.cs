@@ -223,6 +223,8 @@ namespace Lounge.Web.Controllers
                         GainLossLastTen = player.HasEvents ? player.LastTenGainLoss : null,
                         LargestGain = player.LargestGain?.Amount,
                         LargestLoss = player.LargestLoss?.Amount,
+                        NoSQAverageScore = player.NoSQAverageScore,
+                        NoSQAverageScoreLastTen = player.NoSQAverageLastTen,
                         MmrRank = _loungeSettingsService.GetRank(player.Mmr, season),
                         MaxMmrRank = _loungeSettingsService.GetRank(player.MaxMmr, season),
                         CountryCode = player.CountryCode
@@ -258,7 +260,11 @@ namespace Lounge.Web.Controllers
 
             var players = _playerStatCache
                 .GetAllStats(season.Value)
+<<<<<<< HEAD
                 .Where(p => p.Mmr != null)
+=======
+                .Where(p => p.HasEvents)
+>>>>>>> 12ec0fb7e7cc3cfb8c9dd2b4ec57a8afd0ec182b
                 .Select(p => new StatsPlayerViewModel.Player(
                     p.Name,
                     p.Mmr,
@@ -371,7 +377,11 @@ namespace Lounge.Web.Controllers
             }
 
             var tables = _dbCache.Tables.Values
+<<<<<<< HEAD
                 .Where(t => t.Season == season)
+=======
+                .Where(t => t.Season == season && t.DeletedOn == null && t.VerifiedOn != null)
+>>>>>>> 12ec0fb7e7cc3cfb8c9dd2b4ec57a8afd0ec182b
                 .Select(t => new StatsTableViewModel.Table(
                     t.CreatedOn,
                     t.NumTeams,

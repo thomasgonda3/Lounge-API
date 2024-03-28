@@ -18,6 +18,7 @@ const chartSeasonConfig = {
         X: ["Diamond", "Master"],
         S: ["Sapphire", "Diamond", "Master"],
         A: ["Platinum", "Sapphire", "Diamond", "Master"],
+        AB: ["Gold", "Platinum"],
         B: ["Gold"],
         C: ["Silver"],
         D: ["Bronze"],
@@ -319,6 +320,69 @@ const chartSeasonConfig = {
         G: ["Iron 1", "Iron 2", "Placement"],
       },
     },
+    10: {
+      Ranks: {
+        "Iron 1": 0,
+        "Iron 2": 1000,
+        "Bronze 1": 2000,
+        "Bronze 2": 3000,
+        "Silver 1": 4000,
+        "Silver 2": 5000,
+        "Gold 1": 6000,
+        "Gold 2": 7000,
+        "Platinum 1": 8000,
+        "Platinum 2": 9000,
+        "Sapphire 1": 10000,
+        "Sapphire 2": 11000,
+        "Ruby 1": 12000,
+        "Ruby 2": 13000,
+        "Diamond 1": 14000,
+        "Diamond 2": 15000,
+        Master: 16000,
+        Grandmaster: 17000,
+      },
+      RecordsTierOrder: [
+        "X",
+        "S",
+        "A",
+        "AB",
+        "B",
+        "BC",
+        "C",
+        "CD",
+        "D",
+        "DE",
+        "E",
+        "EF",
+        "F",
+        "FG",
+        "G",
+      ],
+      DivisionsToTier: {
+        X: ["Diamond 1", "Diamond 2", "Master", "Grandmaster"],
+        S: ["Ruby 2", "Diamond 1", "Diamond 2", "Master", "Grandmaster"],
+        A: [
+          "Ruby 1",
+          "Ruby 2",
+          "Diamond 1",
+          "Diamond 2",
+          "Master",
+          "Grandmaster",
+        ],
+        AB: ["Sapphire 2", "Ruby 1"],
+        B: ["Sapphire 1", "Sapphire 2"],
+        BC: ["Platinum 2", "Sapphire 1"],
+        C: ["Platinum 1", "Platinum 2"],
+        CD: ["Gold 2", "Platinum 1"],
+        D: ["Gold 1", "Gold 2"],
+        DE: ["Silver 2", "Gold 1"],
+        E: ["Silver 1", "Silver 2"],
+        EF: ["Bronze 2", "Silver 1"],
+        F: ["Bronze 1", "Bronze 2"],
+        FG: ["Iron 2", "Bronze 1"],
+        G: ["Iron 1", "Iron 2", "Placement"],
+      },
+    },
   },
   Colors: {
     Grandmaster: "#a3022c",
@@ -507,6 +571,23 @@ function updateMogiTables(data, season) {
     tierTableBody.appendChild(tr);
   }
 
+  let daysInSeason = 0;
+  let mogisPerDay = 0;
+
+  if (Object.keys(data.activityData.dailyActivity).length > 0) {
+    const mogiActivity = Object.entries(data.activityData.dailyActivity).sort(
+      (a, b) => new Date(a[0]) - new Date(b[0])
+    );
+
+    const beginning = new Date(mogiActivity[0][0]).getTime();
+    const end = new Date(mogiActivity[mogiActivity.length - 1][0]).getTime();
+    daysInSeason = Math.round((end - beginning) / (1000 * 60 * 60 * 24)) + 1;
+    mogisPerDay = Math.round((100 * data.totalMogis) / daysInSeason) / 100;
+  }
+
+  document.getElementById("days-in-season").innerHTML = daysInSeason;
+  document.getElementById("average-mogis-per-day").innerHTML = mogisPerDay;
+
   const weekdayTableColors = [
     "#a3022c",
     "#9370db",
@@ -567,11 +648,14 @@ function updateMogiActivityChart(data, season) {
     (a, b) => new Date(a[0]) - new Date(b[0])
   );
 
+  const seasonDataset = Seasons[season].RecordsTierOrder.reverse();
+  seasonDataset.unshift("SQ");
+
   const title = (tooltipItems) => {
     const index = tooltipItems[0].dataIndex;
     const date = mogiActivity[index];
 
-    return `Total - ${date[1].Total}`;
+    return `${date[0]}`;
   };
 
   const footer = (tooltipItems) => {
@@ -583,19 +667,21 @@ function updateMogiActivityChart(data, season) {
         (10000 * parseInt(tooltipItems[0].formattedValue)) / date[1].Total
       ) / 100;
 
-    return `${mogiPercentage}% of Mogis`;
+    return `${mogiPercentage}% of ${date[1].Total}`;
   };
 
   new Chart(document.getElementById("statMogiActivityChartBody"), {
     type: "bar",
     data: {
       labels: mogiActivity.map((row) => row[0]),
-      datasets: Seasons[season].RecordsTierOrder.reverse().map((tier) => {
+      datasets: seasonDataset.map((tier) => {
         return {
           label: tier,
           data: mogiActivity.map((date) => date[1][tier]),
           backgroundColor:
-            colors[Seasons[season].DivisionsToTier[tier][0].split(" ")[0]],
+            tier !== "SQ"
+              ? colors[Seasons[season].DivisionsToTier[tier][0].split(" ")[0]]
+              : "#FFFFFF",
         };
       }),
     },
@@ -639,6 +725,11 @@ function updateMogiFormatChart(data) {
   );
   const noSQMogiTotal = mogiFormatData.reduce((a, b) => a + b[1], 0);
 
+  const windowSize = Math.max(
+    document.documentElement.clientWidth,
+    window.innerWidth || 0
+  );
+
   new Chart(document.getElementById("statMogiFormatChartBody"), {
     type: "pie",
     data: {
@@ -654,7 +745,16 @@ function updateMogiFormatChart(data) {
     },
     options: {
       responsive: true,
-      aspectRatio: 2,
+      aspectRatio: windowSize <= 767 ? 1.1 : windowSize <= 991 ? 1.4 : 2,
+      onResize: (chart, size) => {
+        const windowSize = Math.max(
+          document.documentElement.clientWidth,
+          window.innerWidth || 0
+        );
+
+        chart.options.aspectRatio =
+          windowSize <= 767 ? 1.1 : windowSize <= 991 ? 1.4 : 2;
+      },
       plugins: {
         title: {
           display: true,
@@ -766,6 +866,13 @@ function updateTopCountryChart(data, season) {
           display: false,
         },
       },
+      scales: {
+        xAxes: {
+          ticks: {
+            autoSkip: false,
+          },
+        },
+      },
     },
   });
 }
@@ -851,6 +958,11 @@ function updatePopulationCountryChart(data) {
     ]);
   }
 
+  const windowSize = Math.max(
+    document.documentElement.clientWidth,
+    window.innerWidth || 0
+  );
+
   new Chart(document.getElementById("statPopulationCountryChartBody"), {
     type: "pie",
     data: {
@@ -866,7 +978,16 @@ function updatePopulationCountryChart(data) {
     },
     options: {
       responsive: true,
-      aspectRatio: 2,
+      aspectRatio: windowSize <= 767 ? 1 : windowSize <= 991 ? 1.4 : 2,
+      onResize: (chart, size) => {
+        const windowSize = Math.max(
+          document.documentElement.clientWidth,
+          window.innerWidth || 0
+        );
+
+        chart.options.aspectRatio =
+          windowSize <= 767 ? 1 : windowSize <= 991 ? 1.4 : 2;
+      },
       plugins: {
         title: {
           display: true,
